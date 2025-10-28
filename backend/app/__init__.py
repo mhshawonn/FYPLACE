@@ -1,0 +1,1 @@
+"""FindYourPlace FastAPI application package."""

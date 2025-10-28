@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 min-h-screen bg-black text-white font-display overflow-x-hidden;
+    background: radial-gradient(circle at top, rgba(229, 9, 20, 0.18), transparent 55%),
+      linear-gradient(160deg, #0b0b0f 0%, #141414 40%, #000000 100%);
+  }
+
+  a {
+    @apply no-underline text-inherit;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+  }
+}

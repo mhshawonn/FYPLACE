@@ -1,0 +1,50 @@
+[
+  {
+    "osm_id": "node/1001",
+    "category": "school",
+    "name": "Sample Heights Elementary School",
+    "phone": "+1-555-0101",
+    "email": "hello@sampleheights.edu",
+    "website": "https://sampleheights.edu",
+    "address": "100 Main St, Sample City, CA",
+    "lat": 34.052235,
+    "lon": -118.243683,
+    "source_tags": "{}"
+  },
+  {
+    "osm_id": "node/1002",
+    "category": "college",
+    "name": "Mock Valley Community College",
+    "phone": "+1-555-0102",
+    "email": null,
+    "website": "https://mockvalleycollege.edu",
+    "address": "250 College Ave, Mock Valley, CA",
+    "lat": 37.77493,
+    "lon": -122.41942,
+    "source_tags": "{}"
+  },
+  {
+    "osm_id": "node/1003",
+    "category": "hospital",
+    "name": "Placeholder Medical Center",
+    "phone": "+1-555-0103",
+    "email": "info@placeholdermed.org",
+    "website": "https://placeholdermed.org",
+    "address": "500 Health Blvd, Placeholder, CA",
+    "lat": 36.778259,
+    "lon": -119.417931,
+    "source_tags": "{}"
+  },
+  {
+    "osm_id": "node/1004",
+    "category": "hotel",
+    "name": "Demo Suites Hotel",
+    "phone": "+1-555-0104",
+    "email": "stay@demosuites.com",
+    "website": "https://demosuites.com",
+    "address": "75 Coastal Rd, Demo Beach, CA",
+    "lat": 32.715736,
+    "lon": -117.161087,
+    "source_tags": "{}"
+  }
+]
