@@ -9,7 +9,7 @@ import io
 from typing import List
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 
 from app.core.config import DEFAULT_CATEGORIES
 from app.schemas.search import Place, SearchRequest, SearchResponse
@@ -71,7 +71,7 @@ def search_places(request: SearchRequest) -> SearchResponse:
 
 
 @router.post("/export")
-def export_places(request: SearchRequest) -> StreamingResponse:
+def export_places(request: SearchRequest) -> Response:
     """
     Return CSV for the same input parameters as `/search`.
     """
@@ -102,18 +102,19 @@ def export_places(request: SearchRequest) -> StreamingResponse:
     for place in response.results:
         writer.writerow(place.model_dump())
 
-    buffer.seek(0)
     filename = f"findyourplace_{response.location_label.replace(' ', '_')}.csv"
 
-    return StreamingResponse(
-        iter([buffer.getvalue()]),
-        media_type="text/csv",
+    csv_bytes = buffer.getvalue().encode("utf-8")
+
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
 @router.get("/california/export")
-def export_california_places(with_email_enrichment: bool = False) -> StreamingResponse:
+def export_california_places(with_email_enrichment: bool = False) -> Response:
     """
     Generate a statewide CSV export for California using the standalone batch logic.
     """
@@ -144,9 +145,9 @@ def export_california_places(with_email_enrichment: bool = False) -> StreamingRe
     for record in records:
         writer.writerow(record)
 
-    buffer.seek(0)
-    return StreamingResponse(
-        iter([buffer.getvalue()]),
-        media_type="text/csv",
+    csv_bytes = buffer.getvalue().encode("utf-8")
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="findyourplace_california.csv"'},
     )

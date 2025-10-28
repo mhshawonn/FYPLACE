@@ -7,6 +7,8 @@ from __future__ import annotations
 import json
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from math import atan2, cos, radians, sin, sqrt
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
@@ -103,6 +105,12 @@ def normalize_record(el: Dict, category: str) -> Dict:
         center = el.get("center") or {}
         lat, lon = center.get("lat"), center.get("lon")
 
+    try:
+        lat = float(lat) if lat is not None else None
+        lon = float(lon) if lon is not None else None
+    except (TypeError, ValueError):
+        lat, lon = None, None
+
     addr = ", ".join(
         [
             tags.get(k)
@@ -184,6 +192,20 @@ def dedupe(records: List[Dict]) -> List[Dict]:
     return out
 
 
+def _haversine_distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """
+    Great-circle distance between two coordinates in metres.
+    """
+    radius_m = 6371000  # Mean Earth radius in metres.
+    phi1, phi2 = radians(lat1), radians(lat2)
+    d_phi = radians(lat2 - lat1)
+    d_lambda = radians(lon2 - lon1)
+
+    a = sin(d_phi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(d_lambda / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return radius_m * c
+
+
 def fetch_places(
     lat: float,
     lon: float,
@@ -194,23 +216,53 @@ def fetch_places(
     """
     Fetch normalised places around a coordinate for the selected categories.
     """
-    categories = categories or list(DEFAULT_CATEGORIES.keys())
     settings = get_settings()
-    records: List[Dict] = []
+    categories = [category for category in (categories or list(DEFAULT_CATEGORIES.keys())) if DEFAULT_CATEGORIES.get(category)]
+    if not categories:
+        return []
 
-    for category in categories:
-        spec = DEFAULT_CATEGORIES.get(category)
-        if not spec:
-            continue
+    def _fetch_category(category: str) -> List[Dict]:
+        spec = DEFAULT_CATEGORIES[category]
         query = build_area_query(lat, lon, radius_m, spec["key"], spec["values"])
         data = call_overpass(query)
         elements = data.get("elements", [])
+        category_records: List[Dict] = []
         for element in elements:
             rec = normalize_record(element, category)
-            if rec["name"] and rec["lat"] and rec["lon"]:
-                records.append(rec)
+            if rec["name"] and rec["lat"] is not None and rec["lon"] is not None:
+                category_records.append(rec)
+        return category_records
 
-    records = dedupe(records)
+    records: List[Dict] = []
+    first_error: Optional[Exception] = None
+
+    max_workers = min(settings.max_parallel_category_requests, len(categories))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_fetch_category, category): category for category in categories}
+        for future in as_completed(futures):
+            if first_error is not None:
+                future.cancel()
+                continue
+            try:
+                records.extend(future.result())
+            except Exception as exc:  # noqa: BLE001
+                first_error = exc
+
+    if first_error is not None:
+        if isinstance(first_error, OverpassError):
+            raise first_error
+        raise OverpassError(f"Failed to fetch places: {first_error}") from first_error
+
+    tolerance = settings.distance_tolerance_factor
+    filtered_records = [
+        rec
+        for rec in records
+        if rec.get("lat") is not None
+        and rec.get("lon") is not None
+        and _haversine_distance_m(lat, lon, float(rec["lat"]), float(rec["lon"])) <= radius_m * tolerance
+    ]
+
+    records = dedupe(filtered_records)
 
     if enable_email_discovery and settings.enable_website_email_discovery:
         to_enrich = [record for record in records if not record.get("email") and record.get("website")]

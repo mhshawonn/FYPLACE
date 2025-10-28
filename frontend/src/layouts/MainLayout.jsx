@@ -1,18 +1,40 @@
 import PropTypes from "prop-types";
 import { NavLink } from "react-router-dom";
-import ThreeScene from "../components/ThreeScene.jsx";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+
+const ThreeScene = lazy(() => import("../components/ThreeScene.jsx"));
 
 const navLinks = [
   { to: "/", label: "Search" }
 ];
 
 export default function MainLayout({ children }) {
+  const [shouldRenderScene, setShouldRenderScene] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setShouldRenderScene(true), 200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-fy-dark text-white">
       {/* 3D butterflies floating in the background */}
       <div className="pointer-events-none fixed inset-0 -z-10 opacity-80">
-        <ThreeScene />
+        {shouldRenderScene && (
+          <Suspense fallback={null}>
+            <ThreeScene />
+          </Suspense>
+        )}
       </div>
 
       <header className="fixed top-0 z-50 w-full border-b border-white/5 bg-gradient-to-b from-black/70 via-black/40 to-transparent backdrop-blur-md">

@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     enable_website_email_discovery: bool = False
     overpass_retry_attempts: int = 3
     user_agent: str = "FindYourPlace/1.0 (+https://example.com)"
+    max_parallel_category_requests: int = Field(
+        4,
+        description="Upper bound for parallel Overpass category calls.",
+    )
+    distance_tolerance_factor: float = Field(
+        1.05,
+        description="Multiplier applied to the requested radius when filtering results by distance.",
+    )
     mock_places_path: Optional[str] = Field(
         default=str((Path(__file__).resolve().parent.parent / "data" / "sample_places.json")),
         description="Optional path to static places data used when Overpass is unavailable.",
