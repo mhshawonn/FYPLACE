@@ -234,21 +234,19 @@ def fetch_places(
         return category_records
 
     records: List[Dict] = []
-    first_error: Optional[Exception] = None
+    errors: List[Exception] = []
 
     max_workers = min(settings.max_parallel_category_requests, len(categories))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_fetch_category, category): category for category in categories}
         for future in as_completed(futures):
-            if first_error is not None:
-                future.cancel()
-                continue
             try:
                 records.extend(future.result())
             except Exception as exc:  # noqa: BLE001
-                first_error = exc
+                errors.append(exc)
 
-    if first_error is not None:
+    if not records and errors:
+        first_error = errors[0]
         if isinstance(first_error, OverpassError):
             raise first_error
         raise OverpassError(f"Failed to fetch places: {first_error}") from first_error
@@ -322,22 +320,44 @@ def get_mock_places(categories: Optional[List[str]] = None) -> List[Dict]:
     return [record for record in data if record.get("category") in categories]
 
 
+def _collect_california_category_records(category: str, spec: Dict[str, object]) -> List[Dict]:
+    """
+    Fetch raw records for a single category across California.
+    """
+    query = build_california_query(spec["key"], spec["values"])  # type: ignore[index]
+    data = call_overpass(query)
+    elements = data.get("elements", [])
+    records: List[Dict] = []
+    for element in elements:
+        records.append(normalize_record(element, category))
+    return records
+
+
+def _filter_valid_records(records: Iterable[Dict]) -> List[Dict]:
+    """
+    Retain only records that have a name and concrete coordinates.
+    """
+    filtered: List[Dict] = []
+    for record in records:
+        name = record.get("name")
+        lat = record.get("lat")
+        lon = record.get("lon")
+        if name and lat is not None and lon is not None:
+            filtered.append(record)
+    return filtered
+
+
 def fetch_california_places(enable_email_discovery: bool = False) -> List[Dict]:
     """
     Fetch places for each default category across the state of California.
     """
     settings = get_settings()
-    records: List[Dict] = []
 
+    raw_records: List[Dict] = []
     for category, spec in DEFAULT_CATEGORIES.items():
-        query = build_california_query(spec["key"], spec["values"])
-        data = call_overpass(query)
-        elements = data.get("elements", [])
-        for element in elements:
-            rec = normalize_record(element, category)
-            records.append(rec)
+        raw_records.extend(_collect_california_category_records(category, spec))
 
-    records = [rec for rec in records if rec.get("name") and rec.get("lat") and rec.get("lon")]
+    records = _filter_valid_records(raw_records)
     records = dedupe(records)
 
     if enable_email_discovery and settings.enable_website_email_discovery:

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
             "https://overpass.openstreetmap.ru/api/interpreter",
         ]
     )
-    http_timeout: int = 15
+    http_timeout: int = 45
     crawl_sleep_seconds: float = 1.0
     enable_website_email_discovery: bool = False
     overpass_retry_attempts: int = 3

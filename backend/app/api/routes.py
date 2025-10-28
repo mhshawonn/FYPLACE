@@ -106,6 +106,7 @@ def _perform_search(request: SearchRequest) -> SearchResponse:
             label = cached_label
         results = cached["results"]  # type: ignore[assignment]
     else:
+        used_mock_results = False
         try:
             results = fetch_places(
                 lat=lat,
@@ -121,13 +122,15 @@ def _perform_search(request: SearchRequest) -> SearchResponse:
                     status_code=503,
                     detail="Overpass API is currently unavailable. Please retry shortly.",
                 ) from exc
-        _store_cached_response(
-            cache_key,
-            label,
-            results,
-            settings.search_cache_ttl_seconds,
-            settings.search_cache_max_entries,
-        )
+            used_mock_results = True
+        if not used_mock_results:
+            _store_cached_response(
+                cache_key,
+                label,
+                results,
+                settings.search_cache_ttl_seconds,
+                settings.search_cache_max_entries,
+            )
 
     place_models = [Place(**place) for place in results]
 
