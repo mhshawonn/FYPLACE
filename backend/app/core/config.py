@@ -33,6 +33,16 @@ class Settings(BaseSettings):
         1.05,
         description="Multiplier applied to the requested radius when filtering results by distance.",
     )
+    search_cache_ttl_seconds: int = Field(
+        120,
+        ge=0,
+        description="TTL for in-memory search cache backing repeated export requests.",
+    )
+    search_cache_max_entries: int = Field(
+        128,
+        ge=1,
+        description="Maximum number of cached search responses to retain in memory.",
+    )
     mock_places_path: Optional[str] = Field(
         default=str((Path(__file__).resolve().parent.parent / "data" / "sample_places.json")),
         description="Optional path to static places data used when Overpass is unavailable.",
